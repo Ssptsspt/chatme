@@ -8,10 +8,11 @@
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin:20px; background:#f9f9f9; }
-    #chat { border:1px solid #ccc; padding:10px; height:300px; overflow:auto; background:white; }
+    #chat { border:1px solid #ccc; padding:10px; height:300px; overflow:auto; background:white; margin-bottom:10px; }
     #msg { width:70%; padding:5px; }
     button { padding:6px 12px; margin-top:5px; cursor:pointer; }
     #login, #app { max-width:400px; margin:auto; }
+    input { width: 100%; padding:5px; margin:5px 0; }
   </style>
 </head>
 <body>
@@ -19,23 +20,23 @@
 
   <div id="login">
     <h3>Login / Signup</h3>
-    <input id="email" placeholder="Email"><br><br>
-    <input id="password" type="password" placeholder="Password"><br><br>
-    <button onclick="signup()">Sign Up</button>
-    <button onclick="login()">Login</button>
+    <input id="email" placeholder="Email"><br>
+    <input id="password" type="password" placeholder="Password"><br>
+    <button type="button" onclick="signup()">Sign Up</button>
+    <button type="button" onclick="login()">Login</button>
   </div>
 
   <div id="app" style="display:none;">
     <p>Welcome <span id="user"></span>!</p>
     <div id="chat"></div>
     <input id="msg" placeholder="Type message">
-    <button onclick="send()">Send</button>
+    <button type="button" onclick="send()">Send</button>
     <br><br>
-    <button onclick="logout()">Logout</button>
+    <button type="button" onclick="logout()">Logout</button>
   </div>
 
 <script>
-  // ✅ Your Firebase config
+  // 🔹 Your Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyB27TWdZd8yg2DYpVAd1r37wYd1_g4iObU",
     authDomain: "chatme-65fee.firebaseapp.com",
@@ -55,16 +56,21 @@
 
   // Signup
   function signup(){
-    const e=document.getElementById("email").value;
-    const p=document.getElementById("password").value;
-    auth.createUserWithEmailAndPassword(e,p).catch(err => alert(err.message));
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    if(!email || !password){ alert("Enter email & password"); return; }
+    auth.createUserWithEmailAndPassword(email,password)
+      .then(()=> alert("Sign Up successful!"))
+      .catch(err => alert(err.message));
   }
 
   // Login
   function login(){
-    const e=document.getElementById("email").value;
-    const p=document.getElementById("password").value;
-    auth.signInWithEmailAndPassword(e,p).catch(err => alert(err.message));
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    if(!email || !password){ alert("Enter email & password"); return; }
+    auth.signInWithEmailAndPassword(email,password)
+      .catch(err => alert(err.message));
   }
 
   // Logout
@@ -77,38 +83,39 @@
   // Track auth state
   auth.onAuthStateChanged(user=>{
     if(user){
-      currentUser=user;
+      currentUser = user;
       document.getElementById("login").style.display="none";
       document.getElementById("app").style.display="block";
-      document.getElementById("user").innerText=user.email;
+      document.getElementById("user").innerText = user.email;
       listenMessages();
     }
   });
 
   // Send message
   function send(){
-    const text=document.getElementById("msg").value;
+    const text = document.getElementById("msg").value.trim();
     if(!text) return;
     db.collection("messages").add({
       sender: currentUser.email,
       text,
       time: firebase.firestore.FieldValue.serverTimestamp()
     });
-    document.getElementById("msg").value="";
+    document.getElementById("msg").value = "";
   }
 
   // Listen for messages
   function listenMessages(){
     db.collection("messages").orderBy("time")
-    .onSnapshot(snap=>{
-      const chat=document.getElementById("chat");
-      chat.innerHTML="";
-      snap.forEach(doc=>{
-        const d=doc.data();
-        chat.innerHTML+=`<div><b>${d.sender}:</b> ${d.text}</div>`;
+      .onSnapshot(snapshot=>{
+        const chat = document.getElementById("chat");
+        chat.innerHTML = "";
+        snapshot.forEach(doc=>{
+          const d = doc.data();
+          const time = d.time ? new Date(d.time.seconds*1000).toLocaleTimeString() : "";
+          chat.innerHTML += `<div><b>${d.sender}:</b> ${d.text} <small>${time}</small></div>`;
+        });
+        chat.scrollTop = chat.scrollHeight;
       });
-      chat.scrollTop=chat.scrollHeight;
-    });
   }
 </script>
 </body>
