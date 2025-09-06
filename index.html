@@ -1,42 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>BizChat</title>
+  <title>BizChat Pro</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin:20px; background:#f9f9f9; }
-    #chat { border:1px solid #ccc; padding:10px; height:300px; overflow:auto; background:white; margin-bottom:10px; }
-    #msg { width:70%; padding:5px; }
-    button { padding:6px 12px; margin-top:5px; cursor:pointer; }
-    #login, #app { max-width:400px; margin:auto; }
-    input { width: 100%; padding:5px; margin:5px 0; }
-  </style>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js"></script>
 </head>
-<body>
-  <h2 style="text-align:center;">💬 BizChat</h2>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
-  <div id="login">
-    <h3>Login / Signup</h3>
-    <input id="email" placeholder="Email"><br>
-    <input id="password" type="password" placeholder="Password"><br>
-    <button type="button" onclick="signup()">Sign Up</button>
-    <button type="button" onclick="login()">Login</button>
+<div id="login" class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+  <h2 class="text-2xl font-bold mb-4 text-center">BizChat Pro</h2>
+  <input id="email" class="w-full p-2 border rounded mb-2" placeholder="Email">
+  <input id="password" type="password" class="w-full p-2 border rounded mb-4" placeholder="Password">
+  <button type="button" onclick="signup()" class="w-full bg-blue-500 text-white py-2 rounded mb-2 hover:bg-blue-600">Sign Up</button>
+  <button type="button" onclick="login()" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Login</button>
+</div>
+
+<div id="app" class="hidden w-full max-w-md">
+  <!-- Header -->
+  <div class="flex justify-between items-center bg-blue-500 text-white p-4 rounded-t-lg">
+    <span class="font-bold" id="user">User</span>
+    <button onclick="logout()" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Logout</button>
   </div>
 
-  <div id="app" style="display:none;">
-    <p>Welcome <span id="user"></span>!</p>
-    <div id="chat"></div>
-    <input id="msg" placeholder="Type message">
-    <button type="button" onclick="send()">Send</button>
-    <br><br>
-    <button type="button" onclick="logout()">Logout</button>
+  <!-- Chat Section -->
+  <div class="bg-white p-4 h-64 overflow-y-auto flex flex-col space-y-2" id="chat"></div>
+  <div class="flex mt-2">
+    <input id="msg" class="flex-1 p-2 border rounded-l" placeholder="Type a message">
+    <button type="button" onclick="send()" class="bg-blue-500 text-white px-4 rounded-r hover:bg-blue-600">Send</button>
   </div>
+
+  <!-- Product Catalog -->
+  <div class="bg-white mt-4 p-4 rounded-lg shadow">
+    <h3 class="font-bold mb-2">Add Product</h3>
+    <input id="prodName" class="w-full p-2 border rounded mb-2" placeholder="Product Name">
+    <input id="prodPrice" class="w-full p-2 border rounded mb-2" placeholder="Price">
+    <input id="prodImage" type="file" class="mb-2">
+    <button type="button" onclick="addProduct()" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Add Product</button>
+
+    <h3 class="font-bold mt-4 mb-2">Product List</h3>
+    <div id="productList" class="space-y-2"></div>
+  </div>
+</div>
 
 <script>
-  // 🔹 Your Firebase config
+  // 🔹 Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyB27TWdZd8yg2DYpVAd1r37wYd1_g4iObU",
     authDomain: "chatme-65fee.firebaseapp.com",
@@ -47,10 +60,11 @@
     measurementId: "G-BH7RFPFQ9G"
   };
 
-  // 🔹 Initialize Firebase
+  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
+  const storage = firebase.storage();
 
   let currentUser = null;
 
@@ -76,22 +90,23 @@
   // Logout
   function logout(){
     auth.signOut();
-    document.getElementById("app").style.display="none";
-    document.getElementById("login").style.display="block";
+    document.getElementById("app").classList.add("hidden");
+    document.getElementById("login").classList.remove("hidden");
   }
 
-  // Track auth state
+  // Auth State
   auth.onAuthStateChanged(user=>{
     if(user){
       currentUser = user;
-      document.getElementById("login").style.display="none";
-      document.getElementById("app").style.display="block";
+      document.getElementById("login").classList.add("hidden");
+      document.getElementById("app").classList.remove("hidden");
       document.getElementById("user").innerText = user.email;
       listenMessages();
+      loadProducts();
     }
   });
 
-  // Send message
+  // Chat functions
   function send(){
     const text = document.getElementById("msg").value.trim();
     if(!text) return;
@@ -103,7 +118,6 @@
     document.getElementById("msg").value = "";
   }
 
-  // Listen for messages
   function listenMessages(){
     db.collection("messages").orderBy("time")
       .onSnapshot(snapshot=>{
@@ -112,11 +126,45 @@
         snapshot.forEach(doc=>{
           const d = doc.data();
           const time = d.time ? new Date(d.time.seconds*1000).toLocaleTimeString() : "";
-          chat.innerHTML += `<div><b>${d.sender}:</b> ${d.text} <small>${time}</small></div>`;
+          const bubbleClass = d.sender===currentUser.email ? "bg-blue-100 self-end" : "bg-gray-200 self-start";
+          chat.innerHTML += `<div class="p-2 rounded ${bubbleClass} max-w-xs">${d.sender}: ${d.text} <small>${time}</small></div>`;
         });
         chat.scrollTop = chat.scrollHeight;
       });
   }
+
+  // Product functions
+  async function addProduct(){
+    const name = document.getElementById("prodName").value.trim();
+    const price = document.getElementById("prodPrice").value.trim();
+    const file = document.getElementById("prodImage").files[0];
+    if(!name || !price || !file){ alert("Enter all fields"); return; }
+
+    const storageRef = storage.ref().child("products/"+file.name);
+    await storageRef.put(file);
+    const url = await storageRef.getDownloadURL();
+
+    db.collection("products").add({name, price, image:url});
+    document.getElementById("prodName").value="";
+    document.getElementById("prodPrice").value="";
+    document.getElementById("prodImage").value="";
+  }
+
+  function loadProducts(){
+    db.collection("products").onSnapshot(snapshot=>{
+      const list = document.getElementById("productList");
+      list.innerHTML="";
+      snapshot.forEach(doc=>{
+        const d = doc.data();
+        list.innerHTML += `
+          <div class="border p-2 rounded flex items-center space-x-2">
+            <img src="${d.image}" class="w-12 h-12 object-cover rounded">
+            <div><b>${d.name}</b><br>₹${d.price}</div>
+          </div>`;
+      });
+    });
+  }
 </script>
+
 </body>
 </html>
