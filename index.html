@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>BizChat Pro</title>
-  <!-- Tailwind CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
@@ -13,6 +13,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
 
+<!-- Login / Signup -->
 <div id="login" class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
   <h2 class="text-2xl font-bold mb-4 text-center">BizChat Pro</h2>
   <input id="email" class="w-full p-2 border rounded mb-2" placeholder="Email">
@@ -21,6 +22,7 @@
   <button type="button" onclick="login()" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Login</button>
 </div>
 
+<!-- App -->
 <div id="app" class="hidden w-full max-w-md">
   <!-- Header -->
   <div class="flex justify-between items-center bg-blue-500 text-white p-4 rounded-t-lg">
@@ -49,7 +51,7 @@
 </div>
 
 <script>
-  // 🔹 Firebase config
+  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyB27TWdZd8yg2DYpVAd1r37wYd1_g4iObU",
     authDomain: "chatme-65fee.firebaseapp.com",
@@ -65,7 +67,6 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
   const storage = firebase.storage();
-
   let currentUser = null;
 
   // Signup
@@ -74,8 +75,14 @@
     const password = document.getElementById("password").value.trim();
     if(!email || !password){ alert("Enter email & password"); return; }
     auth.createUserWithEmailAndPassword(email,password)
-      .then(()=> alert("Sign Up successful!"))
-      .catch(err => alert(err.message));
+      .then(userCredential=>{
+        console.log("Sign Up success:", userCredential.user.email);
+        alert("Sign Up successful!");
+      })
+      .catch(err=>{
+        console.error("Sign Up error:", err);
+        alert("Sign Up error: "+err.message);
+      });
   }
 
   // Login
@@ -84,7 +91,13 @@
     const password = document.getElementById("password").value.trim();
     if(!email || !password){ alert("Enter email & password"); return; }
     auth.signInWithEmailAndPassword(email,password)
-      .catch(err => alert(err.message));
+      .then(userCredential=>{
+        console.log("Login success:", userCredential.user.email);
+      })
+      .catch(err=>{
+        console.error("Login error:", err);
+        alert("Login error: "+err.message);
+      });
   }
 
   // Logout
